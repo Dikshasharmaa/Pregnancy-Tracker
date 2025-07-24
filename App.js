@@ -1,12 +1,10 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View } from 'react-native';
+import AppNavigation from './Navigation/AppNavigation';
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text>Baby and Massi and Chachu are Nautanki !</Text>
-      <StatusBar style="auto" />
-    </View>
+    <AppNavigation/>
   );
 }
 
