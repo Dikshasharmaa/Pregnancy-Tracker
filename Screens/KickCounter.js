@@ -1,9 +1,23 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function KickTrackerScreen() {
   const [count, setCount] = useState(0); //Number of kicks
   const [tracking, setTracking] = useState(false);//to check whether the tracking is active
+  const [kickHistory, setKickHistory] = useState([]); 
+
+  useEffect(() => {
+    loadKickHistory();
+  }, []);
+
+  const loadKickHistory = async()=>{
+    const saved = await AsyncStorage.getItem('kickHistory');
+    if(saved){
+        setKickHistory(JSON.parse(saved));
+    }
+  };
+  
 
   const startTracking = () => {
     setCount(0);   //reset the counter
@@ -14,7 +28,15 @@ export default function KickTrackerScreen() {
     setCount(prev => prev + 1); 
   };
 
-  const resetTracking = () => {
+  const resetTracking = async() => {
+    const session ={
+        id: Date.now().toString(),count,
+        date: new Date().toLocaleString(),
+    };
+    const updatedHistory = [session, ...kickHistory];
+    setKickHistory(updatedHistory);
+    await AsyncStorage.setItem('KickHistory', JSON.stringify(updatedHistory));
+   
     setTracking(false);
     setCount(0);
   };
