@@ -2,7 +2,7 @@ import React, { useState , useEffect} from "react";
 import * as Notifications from 'expo-notifications';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SafeAreaView, Text, View, StyleSheet, TextInput,TouchableOpacity, FlatList} from "react-native";
+import { SafeAreaView, Text, View, StyleSheet, TextInput,TouchableOpacity, FlatList, Platform} from "react-native";
 
 export default function ReminderScreen() {
     const [reminders, setreminders] = useState([]);
@@ -39,7 +39,7 @@ export default function ReminderScreen() {
       const newReminder = {
         id: Date.now().toString(),
         text: input,
-        time: selectedTime.toISOString(),
+        time: selectedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
   
       await scheduleNotification(input, selectedTime);
@@ -47,12 +47,21 @@ export default function ReminderScreen() {
       const updated = [...reminders, newReminder];
       setreminders(updated);
       setinput('');
+
   
       await AsyncStorage.setItem('reminders', JSON.stringify(updated));
     };
+    const onChangeTime = (event, selected) => {
+        setShowPicker(Platform.OS === 'ios');
+        if (selected) {
+          setSelectedTime(selected);
+        }
+      };
   
-    const removeReminder = (id) => {
-      setreminders(prev => prev.filter(item => item.id !== id));
+    const removeReminder = async(id) => {
+        const updated = reminders.filter(item => item.id !== id);
+        setreminders(updated);
+        await AsyncStorage.setItem('reminders', JSON.stringify(updated));
     };
   
 
@@ -85,10 +94,7 @@ export default function ReminderScreen() {
                     mode="time"
                     is24Hour={false}
                     display="default"
-                    onChange={(event, date) => {
-                    setShowPicker(false);
-                    if (date) setSelectedTime(date);
-                    }}
+                    onChange={onChangeTime}
                 />
             )}
         
@@ -134,10 +140,12 @@ const styles = StyleSheet.create({
         gap: 10,
     },
     input: {
-      backgroundColor: '#f2f2f2',
-      padding: 12,
-      borderRadius: 8,
-      fontSize: 16,
+        borderColor: '#ccc',
+        borderWidth: 1,
+        borderRadius: 8,
+        padding: 10,
+        marginBottom: 10,
+        fontSize: 16,
     },
     timeBtn: {
       flexDirection: 'row',
