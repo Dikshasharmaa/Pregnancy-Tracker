@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -6,10 +6,13 @@ export default function KickTrackerScreen() {
   const [count, setCount] = useState(0); //Number of kicks
   const [tracking, setTracking] = useState(false);//to check whether the tracking is active
   const [kickHistory, setKickHistory] = useState([]); 
+  const [timer, setTimer] = useState(0);
+  const timerRef = React.useRef(null);
 
   useEffect(() => {
     loadKickHistory();
   }, []);
+  
 
   const loadKickHistory = async()=>{
     const saved = await AsyncStorage.getItem('kickHistory');
@@ -17,18 +20,51 @@ export default function KickTrackerScreen() {
         setKickHistory(JSON.parse(saved));
     }
   };
+
+  const handleAutoEnd = async () => {
+    const session = {
+      id: Date.now().toString(),
+      count,
+      date: new Date().toLocaleString(),
+    };
+  
+    const updatedHistory = [session, ...kickHistory];
+    setKickHistory(updatedHistory);
+    await AsyncStorage.setItem('kickHistory', JSON.stringify(updatedHistory));
+  
+    setTracking(false);
+    setCount(0);
+    setTimer(0);
+  };
+
   
 
   const startTracking = () => {
-    setCount(0);   //reset the counter
-    setTracking(true); //activate the session
+    setCount(0);
+  setTracking(true);
+  setTimer(2 * 60 * 60); // 2 hours in seconds
+
+  timerRef.current = setInterval(() => {
+    setTimer(prev => {
+      if (prev <= 1) {
+        clearInterval(timerRef.current);
+        handleAutoEnd(); // Save session
+        return 0;
+      }
+      return prev - 1;
+    });
+  }, 1000);
   };
 
   const recordKick = () => {
-    setCount(prev => prev + 1); 
+    if(count<10){
+        setCount(prev => prev + 1);
+    }
+     
   };
 
   const resetTracking = async() => {
+    clearInterval(timerRef.current); 
     const session ={
         id: Date.now().toString(),count,
         date: new Date().toLocaleString(),
@@ -39,7 +75,18 @@ export default function KickTrackerScreen() {
    
     setTracking(false);
     setCount(0);
+    setTimer(0);
   };
+    const formatTime = (totalSeconds) => {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return (
+    `${hours.toString().padStart(2, '0')}:` +
+    `${minutes.toString().padStart(2, '0')}:` +
+    `${seconds.toString().padStart(2, '0')}`
+  );
+};
 
   return (
     <SafeAreaView style={styles.container}>
@@ -53,15 +100,22 @@ export default function KickTrackerScreen() {
         <>
           <Text style={styles.counter}>Kicks: {count}</Text>
 
-          <TouchableOpacity onPress={recordKick} style={styles.kickButton}>
-            <Text style={styles.kickText}>👣 I felt a kick</Text>
+          <TouchableOpacity onPress={recordKick} style={[styles.kickButton, count >= 10 && { backgroundColor: '#ccc' }]}
+          disabled={count >= 10}>
+            <Text style={styles.kickText}>
+            {count >= 10 ? "✅ Goal Achieved" : "👣 I felt a kick"}
+            </Text>
           </TouchableOpacity>
+
 
           <TouchableOpacity onPress={resetTracking} style={styles.resetButton}>
             <Text style={styles.buttonText}>End Session</Text>
           </TouchableOpacity>
         </>
       )}
+        <Text style={styles.timerText}>
+            Time Left: {formatTime(timer)}
+        </Text>
     </SafeAreaView>
   );
 }
@@ -111,5 +165,11 @@ const styles = StyleSheet.create({
   kickText: {
     color: '#fff',
     fontSize: 20,
+  },
+  timerText: {
+    fontSize: 18,
+    marginTop: 8,
+    textAlign: 'center',
+    color: '#555',
   },
 });
